@@ -9,26 +9,60 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.turkcell.lyraapp.ui.theme.LyraAppTheme
 
 @Composable
-fun LoginScreen(
+fun LoginRoute(
     modifier: Modifier = Modifier,
-    onLoginClick: () -> Unit = {},
-    onRegisterClick: () -> Unit = {},
-    onForgotPasswordClick: () -> Unit = {}
+    viewModel: LoginViewModel = hiltViewModel(),
+    onNavigateToHome: () -> Unit = {},
+    onNavigateToRegister: () -> Unit = {},
+    onNavigateToForgotPassword: () -> Unit = {},
+    onShowError: (String) -> Unit = {}
+) {
+    val state by viewModel.state.collectAsState()
+
+    LaunchedEffect(viewModel.effect) {
+        viewModel.effect.collect { effect ->
+            when (effect) {
+                is LoginEffect.NavigateToHome -> onNavigateToHome()
+                is LoginEffect.NavigateToRegister -> onNavigateToRegister()
+                is LoginEffect.NavigateToForgotPassword -> onNavigateToForgotPassword()
+                is LoginEffect.ShowError -> onShowError(effect.message)
+            }
+        }
+    }
+
+    LoginScreen(
+        state = state,
+        onEvent = viewModel::onEvent,
+        modifier = modifier
+    )
+}
+
+@Composable
+fun LoginScreen(
+    state: LoginState,
+    onEvent: (LoginEvent) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Scaffold(
         modifier = modifier,
@@ -48,7 +82,6 @@ fun LoginScreen(
                 modifier = Modifier
                     .size(64.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    // Renk paletindeki vurgu rengine en yakın konteyner rengi seçildi
                     .background(MaterialTheme.colorScheme.tertiaryContainer),
                 contentAlignment = Alignment.Center
             ) {
@@ -82,8 +115,8 @@ fun LoginScreen(
 
             // Telefon Numarası Alanı
             OutlinedTextField(
-                value = "",
-                onValueChange = {},
+                value = state.phoneNumber,
+                onValueChange = { onEvent(LoginEvent.OnPhoneNumberChange(it)) },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Telefon numarası") },
                 leadingIcon = {
@@ -109,8 +142,8 @@ fun LoginScreen(
 
             // Şifre Alanı
             OutlinedTextField(
-                value = "",
-                onValueChange = {},
+                value = state.password,
+                onValueChange = { onEvent(LoginEvent.OnPasswordChange(it)) },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Şifre") },
                 leadingIcon = {
@@ -120,14 +153,14 @@ fun LoginScreen(
                     )
                 },
                 trailingIcon = {
-                    IconButton(onClick = { /* State içermeyecek şekilde bırakıldı */ }) {
+                    IconButton(onClick = { onEvent(LoginEvent.OnTogglePasswordVisibility) }) {
                         Icon(
-                            imageVector = Icons.Default.Visibility,
-                            contentDescription = "Şifreyi Göster"
+                            imageVector = if (state.isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            contentDescription = if (state.isPasswordVisible) "Şifreyi Gizle" else "Şifreyi Göster"
                         )
                     }
                 },
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (state.isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 singleLine = true,
                 shape = RoundedCornerShape(16.dp)
@@ -137,7 +170,7 @@ fun LoginScreen(
 
             // Şifremi Unuttum Butonu
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-                TextButton(onClick = onForgotPasswordClick) {
+                TextButton(onClick = { onEvent(LoginEvent.OnForgotPasswordClick) }) {
                     Text(
                         text = "Şifremi unuttum",
                         style = MaterialTheme.typography.labelLarge,
@@ -150,30 +183,39 @@ fun LoginScreen(
 
             // Giriş Yap Butonu
             Button(
-                onClick = onLoginClick,
+                onClick = { onEvent(LoginEvent.OnLoginClick) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(28.dp),
+                enabled = !state.isLoading,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "Giriş yap",
-                        style = MaterialTheme.typography.titleMedium
+                if (state.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        strokeWidth = 2.dp
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "Giriş yap",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
 
@@ -193,7 +235,10 @@ fun LoginScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                TextButton(onClick = onRegisterClick, contentPadding = PaddingValues(0.dp)) {
+                TextButton(
+                    onClick = { onEvent(LoginEvent.OnRegisterClick) },
+                    contentPadding = PaddingValues(0.dp)
+                ) {
                     Text(
                         text = "Kayıt ol",
                         style = MaterialTheme.typography.labelLarge,
@@ -209,7 +254,10 @@ fun LoginScreen(
 @Composable
 fun LoginScreenDarkPreview() {
     LyraAppTheme {
-        LoginScreen()
+        LoginScreen(
+            state = LoginState(),
+            onEvent = {}
+        )
     }
 }
 
@@ -217,6 +265,9 @@ fun LoginScreenDarkPreview() {
 @Composable
 fun LoginScreenLightPreview() {
     LyraAppTheme {
-        LoginScreen()
+        LoginScreen(
+            state = LoginState(),
+            onEvent = {}
+        )
     }
 }
