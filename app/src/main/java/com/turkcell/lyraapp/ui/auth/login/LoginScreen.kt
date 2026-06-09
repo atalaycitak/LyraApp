@@ -1,4 +1,4 @@
-package com.turkcell.lyraapp.ui.screens.login
+package com.turkcell.lyraapp.ui.auth.login
 
 import android.content.res.Configuration
 import androidx.compose.foundation.background
@@ -38,30 +38,30 @@ fun LoginRoute(
     onNavigateToForgotPassword: () -> Unit = {},
     onShowError: (String) -> Unit = {}
 ) {
-    val state by viewModel.state.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(viewModel.effect) {
         viewModel.effect.collect { effect ->
             when (effect) {
-                is LoginEffect.NavigateToHome -> onNavigateToHome()
-                is LoginEffect.NavigateToRegister -> onNavigateToRegister()
-                is LoginEffect.NavigateToForgotPassword -> onNavigateToForgotPassword()
-                is LoginEffect.ShowError -> onShowError(effect.message)
+                is Effect.NavigateToHome -> onNavigateToHome()
+                is Effect.NavigateToRegister -> onNavigateToRegister()
+                is Effect.NavigateToForgotPassword -> onNavigateToForgotPassword()
+                is Effect.ShowError -> onShowError(effect.message)
             }
         }
     }
 
     LoginScreen(
-        state = state,
-        onEvent = viewModel::onEvent,
+        uiState = uiState,
+        onIntent = viewModel::onIntent,
         modifier = modifier
     )
 }
 
 @Composable
 fun LoginScreen(
-    state: LoginState,
-    onEvent: (LoginEvent) -> Unit,
+    uiState: UiState,
+    onIntent: (Intent) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -115,8 +115,8 @@ fun LoginScreen(
 
             // Telefon Numarası Alanı
             OutlinedTextField(
-                value = state.phoneNumber,
-                onValueChange = { onEvent(LoginEvent.OnPhoneNumberChange(it)) },
+                value = uiState.phoneNumber,
+                onValueChange = { onIntent(Intent.OnPhoneNumberChange(it)) },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Telefon numarası") },
                 leadingIcon = {
@@ -142,8 +142,8 @@ fun LoginScreen(
 
             // Şifre Alanı
             OutlinedTextField(
-                value = state.password,
-                onValueChange = { onEvent(LoginEvent.OnPasswordChange(it)) },
+                value = uiState.password,
+                onValueChange = { onIntent(Intent.OnPasswordChange(it)) },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Şifre") },
                 leadingIcon = {
@@ -153,14 +153,14 @@ fun LoginScreen(
                     )
                 },
                 trailingIcon = {
-                    IconButton(onClick = { onEvent(LoginEvent.OnTogglePasswordVisibility) }) {
+                    IconButton(onClick = { onIntent(Intent.OnTogglePasswordVisibility) }) {
                         Icon(
-                            imageVector = if (state.isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (state.isPasswordVisible) "Şifreyi Gizle" else "Şifreyi Göster"
+                            imageVector = if (uiState.isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            contentDescription = if (uiState.isPasswordVisible) "Şifreyi Gizle" else "Şifreyi Göster"
                         )
                     }
                 },
-                visualTransformation = if (state.isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                visualTransformation = if (uiState.isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 singleLine = true,
                 shape = RoundedCornerShape(16.dp)
@@ -170,7 +170,7 @@ fun LoginScreen(
 
             // Şifremi Unuttum Butonu
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-                TextButton(onClick = { onEvent(LoginEvent.OnForgotPasswordClick) }) {
+                TextButton(onClick = { onIntent(Intent.OnForgotPasswordClick) }) {
                     Text(
                         text = "Şifremi unuttum",
                         style = MaterialTheme.typography.labelLarge,
@@ -183,18 +183,18 @@ fun LoginScreen(
 
             // Giriş Yap Butonu
             Button(
-                onClick = { onEvent(LoginEvent.OnLoginClick) },
+                onClick = { onIntent(Intent.OnLoginClick) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(28.dp),
-                enabled = !state.isLoading,
+                enabled = !uiState.isLoading,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             ) {
-                if (state.isLoading) {
+                if (uiState.isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -236,7 +236,7 @@ fun LoginScreen(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 TextButton(
-                    onClick = { onEvent(LoginEvent.OnRegisterClick) },
+                    onClick = { onIntent(Intent.OnRegisterClick) },
                     contentPadding = PaddingValues(0.dp)
                 ) {
                     Text(
@@ -255,8 +255,8 @@ fun LoginScreen(
 fun LoginScreenDarkPreview() {
     LyraAppTheme {
         LoginScreen(
-            state = LoginState(),
-            onEvent = {}
+            uiState = UiState(),
+            onIntent = {}
         )
     }
 }
@@ -266,8 +266,8 @@ fun LoginScreenDarkPreview() {
 fun LoginScreenLightPreview() {
     LyraAppTheme {
         LoginScreen(
-            state = LoginState(),
-            onEvent = {}
+            uiState = UiState(),
+            onIntent = {}
         )
     }
 }
