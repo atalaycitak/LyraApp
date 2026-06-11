@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.turkcell.lyraapp.data.auth.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,50 +19,52 @@ class LoginViewModel @Inject constructor(
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(UiState())
-    val uiState: StateFlow<UiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(LoginUiState())
+    val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
-    private val _effect = Channel<Effect>()
-    val effect = _effect.receiveAsFlow()
+    private val _effect = Channel<LoginEffect>(Channel.BUFFERED)
+    val effect: Flow<LoginEffect> = _effect.receiveAsFlow()
 
-    fun onIntent(intent: Intent) {
+    fun onIntent(intent: LoginIntent) {
         when (intent) {
-            is Intent.OnPhoneNumberChange -> {
-                _uiState.update { it.copy(phoneNumber = intent.phoneNumber) }
-            }
-            is Intent.OnPasswordChange -> {
-                _uiState.update { it.copy(password = intent.password) }
-            }
-            Intent.OnTogglePasswordVisibility -> {
+            is LoginIntent.PhoneNumberChanged -> updateForm { it.copy(phoneNumber = intent.value) }
+            is LoginIntent.PasswordChanged -> updateForm { it.copy(password = intent.value) }
+            is LoginIntent.TogglePasswordVisibility -> {
                 _uiState.update { it.copy(isPasswordVisible = !it.isPasswordVisible) }
             }
-            Intent.OnLoginClick -> {
-                viewModelScope.launch {
-                    _uiState.update { it.copy(isLoading = true) }
-                    
-                    val result = authRepository.login(
-                        phoneNumber = _uiState.value.phoneNumber,
-                        password = _uiState.value.password
-                    )
-                    
-                    _uiState.update { it.copy(isLoading = false) }
-                    
-                    result.onSuccess {
-                        _effect.send(Effect.NavigateToHome)
-                    }.onFailure { error ->
-                        _effect.send(Effect.ShowError(error.message ?: "Bilinmeyen bir hata oluştu"))
-                    }
-                }
+            is LoginIntent.Submit -> submit()
+            is LoginIntent.RegisterClicked -> {
+                viewModelScope.launch { _effect.send(LoginEffect.NavigateToRegister) }
             }
-            Intent.OnRegisterClick -> {
-                viewModelScope.launch {
-                    _effect.send(Effect.NavigateToRegister)
-                }
+            is LoginIntent.ForgotPasswordClicked -> {
+                viewModelScope.launch { _effect.send(LoginEffect.NavigateToForgotPassword) }
             }
-            Intent.OnForgotPasswordClick -> {
-                viewModelScope.launch {
-                    _effect.send(Effect.NavigateToForgotPassword)
-                }
+        }
+    }
+
+    private fun updateForm(transform: (LoginUiState) -> LoginUiState) {
+        _uiState.update { current ->
+            val updated = transform(current)
+            updated.copy(isLoginEnabled = updated.isFormValid())
+        }
+    }
+
+    private fun LoginUiState.isFormValid(): Boolean =
+        phoneNumber.isNotBlank() && password.length >= 6
+
+    private fun submit() {
+        val state = _uiState.value
+        if (!state.isLoginEnabled || state.isLoading) return
+        
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            val result = authRepository.login(state.phoneNumber, state.password)
+            _uiState.update { it.copy(isLoading = false) }
+            
+            result.onSuccess {
+                _effect.send(LoginEffect.NavigateToHome)
+            }.onFailure { error ->
+                _effect.send(LoginEffect.ShowError(error.message ?: "Bilinmeyen bir hata oluştu"))
             }
         }
     }

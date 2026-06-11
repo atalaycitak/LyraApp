@@ -15,8 +15,8 @@ import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,6 +27,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.turkcell.lyraapp.ui.theme.LyraAppTheme
 
 @Composable
@@ -35,18 +36,18 @@ fun LoginRoute(
     viewModel: LoginViewModel = hiltViewModel(),
     onNavigateToHome: () -> Unit = {},
     onNavigateToRegister: () -> Unit = {},
-    onNavigateToForgotPassword: () -> Unit = {},
-    onShowError: (String) -> Unit = {}
+    onNavigateToForgotPassword: () -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(viewModel.effect) {
+    LaunchedEffect(Unit) {
         viewModel.effect.collect { effect ->
             when (effect) {
-                is Effect.NavigateToHome -> onNavigateToHome()
-                is Effect.NavigateToRegister -> onNavigateToRegister()
-                is Effect.NavigateToForgotPassword -> onNavigateToForgotPassword()
-                is Effect.ShowError -> onShowError(effect.message)
+                is LoginEffect.NavigateToHome -> onNavigateToHome()
+                is LoginEffect.NavigateToRegister -> onNavigateToRegister()
+                is LoginEffect.NavigateToForgotPassword -> onNavigateToForgotPassword()
+                is LoginEffect.ShowError -> snackbarHostState.showSnackbar(effect.message)
             }
         }
     }
@@ -54,19 +55,22 @@ fun LoginRoute(
     LoginScreen(
         uiState = uiState,
         onIntent = viewModel::onIntent,
+        snackbarHostState = snackbarHostState,
         modifier = modifier
     )
 }
 
 @Composable
 fun LoginScreen(
-    uiState: UiState,
-    onIntent: (Intent) -> Unit,
+    uiState: LoginUiState,
+    onIntent: (LoginIntent) -> Unit,
+    snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier
 ) {
     Scaffold(
         modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -116,7 +120,7 @@ fun LoginScreen(
             // Telefon Numarası Alanı
             OutlinedTextField(
                 value = uiState.phoneNumber,
-                onValueChange = { onIntent(Intent.OnPhoneNumberChange(it)) },
+                onValueChange = { onIntent(LoginIntent.PhoneNumberChanged(it)) },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Telefon numarası") },
                 leadingIcon = {
@@ -143,7 +147,7 @@ fun LoginScreen(
             // Şifre Alanı
             OutlinedTextField(
                 value = uiState.password,
-                onValueChange = { onIntent(Intent.OnPasswordChange(it)) },
+                onValueChange = { onIntent(LoginIntent.PasswordChanged(it)) },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Şifre") },
                 leadingIcon = {
@@ -153,7 +157,7 @@ fun LoginScreen(
                     )
                 },
                 trailingIcon = {
-                    IconButton(onClick = { onIntent(Intent.OnTogglePasswordVisibility) }) {
+                    IconButton(onClick = { onIntent(LoginIntent.TogglePasswordVisibility) }) {
                         Icon(
                             imageVector = if (uiState.isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                             contentDescription = if (uiState.isPasswordVisible) "Şifreyi Gizle" else "Şifreyi Göster"
@@ -170,7 +174,7 @@ fun LoginScreen(
 
             // Şifremi Unuttum Butonu
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-                TextButton(onClick = { onIntent(Intent.OnForgotPasswordClick) }) {
+                TextButton(onClick = { onIntent(LoginIntent.ForgotPasswordClicked) }) {
                     Text(
                         text = "Şifremi unuttum",
                         style = MaterialTheme.typography.labelLarge,
@@ -183,12 +187,12 @@ fun LoginScreen(
 
             // Giriş Yap Butonu
             Button(
-                onClick = { onIntent(Intent.OnLoginClick) },
+                onClick = { onIntent(LoginIntent.Submit) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(28.dp),
-                enabled = !uiState.isLoading,
+                enabled = uiState.isLoginEnabled && !uiState.isLoading,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -236,7 +240,7 @@ fun LoginScreen(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 TextButton(
-                    onClick = { onIntent(Intent.OnRegisterClick) },
+                    onClick = { onIntent(LoginIntent.RegisterClicked) },
                     contentPadding = PaddingValues(0.dp)
                 ) {
                     Text(
@@ -255,8 +259,9 @@ fun LoginScreen(
 fun LoginScreenDarkPreview() {
     LyraAppTheme {
         LoginScreen(
-            uiState = UiState(),
-            onIntent = {}
+            uiState = LoginUiState(),
+            onIntent = {},
+            snackbarHostState = remember { SnackbarHostState() }
         )
     }
 }
@@ -266,8 +271,9 @@ fun LoginScreenDarkPreview() {
 fun LoginScreenLightPreview() {
     LyraAppTheme {
         LoginScreen(
-            uiState = UiState(),
-            onIntent = {}
+            uiState = LoginUiState(),
+            onIntent = {},
+            snackbarHostState = remember { SnackbarHostState() }
         )
     }
 }

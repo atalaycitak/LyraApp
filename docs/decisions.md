@@ -10,7 +10,7 @@
 
 - Son Güncelleme Tarihi*: 04.06.2026
 
-- Alternatifler: **Koin, X**
+- Alternatifler: **Koin**
 
 - Sebep: **Opsiyonel**
 
@@ -20,3 +20,49 @@
 - Seçim: **Compose Navigation**
 
 - Son Güncelleme Tarihi: 04.06.2026
+
+
+### Sunum Katmanı Mimarisi
+
+- Seçim: **MVI (Model-View-Intent)**
+
+- Son Güncelleme Tarihi: 09.06.2026
+
+- Kapsam: Her ekran State + Intent + Effect sözleşmesiyle yazılır. Detaylı kurallar ve
+  referans implementasyon (Login) için bkz. [architecture/mvi-overview.md](architecture/mvi-overview.md).
+
+- Sebep: Tek yönlü veri akışı, durumsuz UI, test edilebilirlik.
+
+
+### Hilt Annotation Processing
+
+- Seçim: **KSP** (kapt değil)
+
+- Son Güncelleme Tarihi: 09.06.2026
+
+- Sürümler: Hilt **2.59.2**, KSP **2.2.10-2.0.2** (Kotlin 2.2.10 ile birebir uyumlu).
+
+- Compose'da ViewModel: `androidx.hilt:hilt-lifecycle-viewmodel-compose` (`hiltViewModel()`).
+  Compose Navigation henüz kurulmadığından navigation-compose bağımlılığı eklenmemiştir.
+
+- Sebep: KSP, kapt'a göre belirgin biçimde hızlıdır ve Kotlin 2.2 ile uyumludur.
+
+
+### AGP 9 Built-in Kotlin + KSP Uyumu
+
+- Karar: `gradle.properties` içinde **`android.disallowKotlinSourceSets=false`** zorunludur.
+
+- Son Güncelleme Tarihi: 09.06.2026
+
+- Sebep: AGP 9 built-in Kotlin kullanır; KSP'nin ürettiği kaynak dizinlerini eklemesi bu bayrak
+  olmadan derlemeyi kırar. Bayrak deneysel (experimental) olarak işaretlidir ancak gereklidir.
+
+
+### Backend Hazır Değilken Veri Katmanı
+
+- Karar: **Stub repository** deseni — Repository interface + `Fake<X>Repository` implementasyonu.
+
+- Son Güncelleme Tarihi: 09.06.2026
+
+- Sebep: Backend REST API sözleşmesi tanımlı değil (`agents.md` §2.2 uydurmak yasak). Gerçek API
+  geldiğinde yalnızca implementasyon ve DI bağlaması değişir; ViewModel/Contract etkilenmez.

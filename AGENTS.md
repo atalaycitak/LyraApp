@@ -29,6 +29,15 @@ Kod üretmeden önce şunları yapmak zorundasın;
 
 - Planı sun, onay almadan asla implementasyona başlama.
 
+### 2.4) MVI MİMARİSİ VE KLASÖR DÜZENİ STANDARTLARI
+
+Projeye yeni bir arayüz/özellik (feature) ekleneceğinde MVVM DEĞİL, zorunlu olarak MVI mimarisi kullanılacaktır. Aşağıdaki standartları ihlal etmek yasaktır:
+- **İsimlendirme:** ViewModel ve Contract yapılarında parametreler `State` / `Event` DEĞİL; **`UiState`**, **`Intent`**, ve **`Effect`** olarak isimlendirilmek ZORUNDADIR.
+- **Klasör Hiyerarşisi:**
+  - UI Bileşenleri (Screen, ViewModel, Contract): `ui/feature_name/subfeature/` dizininde yer almalıdır (Örn: `ui/auth/login/`). Eski tip `ui/screens/` dizini kullanılamaz.
+  - Data Bileşenleri (Repository Interface, Fake Repository vb.): `data/feature_name/` dizininde yer almalıdır (Örn: `data/auth/`).
+  - DI (Dependency Injection) Modülleri: `di/` dizininde yer almalıdır ve arayüz bağlamalarında (Repository implementation) `@Binds` anotasyonu kullanılmalıdır.
+
 ## 3) ÇIKTI FORMATI
 
 Her implementasyon ya da plan sonrası aşağıdaki çıktı formatına uymak zorundasın.
